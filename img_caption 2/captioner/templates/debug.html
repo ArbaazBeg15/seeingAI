@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark-Themed Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #343541;
+            color: white;
+        }
+
+        .navbar {
+            background-color: #202123;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #4d4d4f;
+        }
+
+        .main-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .chat-container {
+            background-color: #343541;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            background-color: #40414f;
+            border: 1px solid #565869;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            resize: none;
+            min-height: 24px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background-color: #565869;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .upload-btn:hover {
+            background-color: #6e7081;
+        }
+
+        .submit-btn {
+            background-color: #10a37f;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .submit-btn:hover {
+            background-color: #0e8e6d;
+        }
+
+        .preview-container {
+            margin-top: 20px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+        }
+
+        #response-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #40414f;
+            border-radius: 8px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1 style="font-size: 1.2rem; margin: 0;">Doctor Image Analysis</h1>
+    </div>
+
+    <div class="main-content">
+        <div class="chat-container">
+            <form id="upload-form" class="upload-form" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="input-group">
+                    <textarea name="text" class="message-input" placeholder="Enter your prompt (optional)"></textarea>
+                </div>
+                <div class="input-group">
+                    <input type="file" name="image" id="image-input" class="file-input" accept="image/*" required>
+                    <label for="image-input" class="upload-btn">Choose Image</label>
+                    <button type="submit" class="submit-btn">Analyze</button>
+                </div>
+                <div class="preview-container">
+                    <img id="preview" class="preview-image" style="display: none;">
+                </div>
+            </form>
+            <div id="response-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Image preview
+        document.getElementById('image-input').addEventListener('change', function(e) {
+            const preview = document.getElementById('preview');
+            const file = e.target.files[0];
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form submission
+        $('#upload-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            $.ajax({
+                url: '',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    const responseContainer = $('#response-container');
+                    responseContainer.html(`<p>Prescription: ${response.prescrition}</p>`);
+                    responseContainer.show();
+                },
+                error: function(xhr, status, error) {
+                    alert('Error uploading image: ' + error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

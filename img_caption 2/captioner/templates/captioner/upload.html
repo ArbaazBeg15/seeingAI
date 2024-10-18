@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera and Audio App</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #121212;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #camera {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        .audio-button, .switch-camera-btn {
+            position: absolute;
+            background-color: #1f1f1f; /* Dark gray background */
+            color: #fff;  /* White font for clear readability */
+            border: none;
+            padding: 12px 24px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 2;
+            border-radius: 25px; /* Fully rounded for a modern look */
+            letter-spacing: 0.05em; /* Subtle spacing for a clean design */
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .audio-button {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .switch-camera-btn {
+            top: 20px;
+            right: 20px;
+        }
+
+        .audio-button:hover, .switch-camera-btn:hover {
+            background-color: #333;  /* Slightly lighter gray on hover */
+            transform: scale(1.05);  /* Smooth hover scale effect */
+        }
+
+        .audio-button:active, .switch-camera-btn:active {
+            background-color: #444;  /* Even lighter gray on click */
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Camera feed -->
+    <video id="camera" autoplay playsinline></video>
+
+    <!-- Invisible overlay for capturing clicks/touches -->
+    <div id="overlay"></div>
+
+    <!-- Audio play button -->
+    <button id="audioBtn" class="audio-button">Play Audio</button>
+
+    <!-- Switch Camera Button -->
+    <button id="switchCameraBtn" class="switch-camera-btn">Switch Camera</button>
+
+    <script>
+        let cameraStream;
+        let usingFrontCamera = true;
+        const camera = document.getElementById('camera');
+        const overlay = document.getElementById('overlay');
+        let audio = new Audio();
+
+        // Get access to the camera stream
+        async function startCamera() {
+            if (cameraStream) {
+                const tracks = cameraStream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: usingFrontCamera ? 'user' : 'environment'
+                    }
+                });
+                camera.srcObject = cameraStream;
+            } catch (err) {
+                console.error('Error accessing camera: ', err);
+            }
+        }
+
+        startCamera();
+
+        // Handle click/touch event for taking photo
+        overlay.addEventListener('click', async () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = camera.videoWidth;
+            canvas.height = camera.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            const blob = await (await fetch(dataUrl)).blob();
+
+            // Send the image to the Django backend via POST
+            const formData = new FormData();
+            formData.append('image', blob, 'capture.jpg');
+
+            fetch('{% url "to_audio" %}', {  // Adjusted to use Django URL routing
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',  // CSRF token for security
+                }
+            }).then(response => response.json())
+              .then(data => {
+                  // After receiving the photo response, play audio file
+                  audio.src = data.audio_url;  // The backend should return the audio URL
+                  audio.play();
+              })
+              .catch(error => {
+                  console.error('Error uploading photo:', error);
+              });
+        });
+
+        // Play audio when button is clicked
+        document.getElementById('audioBtn').addEventListener('click', () => {
+            if (audio.src) {
+                audio.play();
+            }
+        });
+
+        // Switch camera between front and rear
+        document.getElementById('switchCameraBtn').addEventListener('click', () => {
+            usingFrontCamera = !usingFrontCamera;
+            startCamera();
+        });
+
+    </script>
+
+</body>
+</html>
